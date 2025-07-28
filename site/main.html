@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+
+<!--
+
+this should be where main page is, so bascially home but i dont wanna call it that. give it a more game esque? criss wont get it. who gon read this anyways
+hello najwan from the future??
+
+
+-->
 <html lang="en" >
 <head>
   <meta charset="UTF-8" />
@@ -154,6 +162,8 @@
     }
 
     /*holly miracle?? buttons come here one at a time*/
+
+
     .menu-button.visible {
       opacity: 1;
       transform: translateX(0);
@@ -167,9 +177,9 @@
     <div id="time">00:00:00</div>
     <div id="menu">
       <a class="menu-button" href="gamemenu.html">Play Game</a>
-<a class="menu-button" href="settings.html">Settings</a>
-<a class="menu-button" href="about.html">About</a>
-<a class="menu-button" href="https://google.com">Exit</a> <!-- or goodbye.html -->
+<a class="menu-button" href="">fsfefsef</a>
+<a class="menu-button" href="">fsefsefsef</a>
+<a class="menu-button" href="index.html">Exit</a>
 
     </div>
   </div>
@@ -179,24 +189,25 @@
     const timeEl = document.getElementById('time');
     const menuButtons = document.querySelectorAll('.menu-button');
 
-    // After typing ends (2.5s), move welcome up and show time + menu
+    // welcome goes up
     setTimeout(() => {
       welcome.classList.add('moved');
     }, 2600);
 
-    // Show time after welcome moved
+    // time
     setTimeout(() => {
       timeEl.classList.add('visible');
     }, 3700);
 
-    // Show menu buttons one by one from right
+    // menu btn anime
+
     menuButtons.forEach((btn, i) => {
       setTimeout(() => {
         btn.classList.add('visible');
       }, 4200 + i * 400);
     });
 
-    // Update time every second
+    // time updation
     function updateTime() {
       const now = new Date();
       const hh = String(now.getHours()).padStart(2,'0');

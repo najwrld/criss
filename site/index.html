@@ -1,5 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+
+<!-- 
+
+password area (type the password: )
+  .first page
+
+-->
+
+<html>
 <head>
   <meta charset="UTF-8">
   <title>WHAT IS THE PASSWORD!!!!</title>
@@ -24,6 +32,7 @@
       background-color: #f2e38f;
       padding: 10px;
       transition: transform 0.5s ease;
+      animation: shake 0.1s ease;
     }
 
     input {
@@ -47,7 +56,7 @@
     }
 
     .shake {
-      animation: shake 0.4s ease;
+      animation: shake 1s ease;
     }
 
     .flash-red {
@@ -80,7 +89,7 @@
 <body>
 
   <div class="password-box" id="passwordBox">
-    <input type="password" id="passwordInput" placeholder="PASSWORD" autofocus />
+    <input type="password" id="passwordInput" placeholder="password" autofocus />
   </div>
 
   <script>
