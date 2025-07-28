@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mini Mario Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #87CEEB;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #87CEEB;
+    }
+
+    .player {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: red;
+    }
+
+    .platform {
+      position: absolute;
+      height: 20px;
+      background: #654321;
+    }
+
+    #exit {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: black;
+      color: #f2e38f;
+      padding: 12px 20px;
+      font-weight: bold;
+      text-decoration: none;
+      border: 2px solid #f2e38f;
+      font-size: 18px;
+      z-index: 10;
+    }
+
+    #exit:hover {
+      background: #f2e38f;
+      color: black;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div class="player" id="player"></div>
+    <div class="platform" style="left: 0; top: 580px; width: 100%;"></div>
+    <div class="platform" style="left: 200px; top: 450px; width: 120px;"></div>
+    <div class="platform" style="left: 400px; top: 350px; width: 100px;"></div>
+    <div class="platform" style="left: 600px; top: 500px; width: 180px;"></div>
+    <a id="exit" href="main.html">Exit</a>
+  </div>
+
+  <script>
+    const player = document.getElementById("player");
+    const game = document.getElementById("game");
+    const platforms = document.querySelectorAll(".platform");
+
+    let x = 100;
+    let y = 500;
+    let vx = 0;
+    let vy = 0;
+    const gravity = 0.5;
+    const jumpForce = -10;
+    const speed = 4;
+    let grounded = false;
+
+    const keys = {
+      left: false,
+      right: false,
+      jump: false
+    };
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft") keys.left = true;
+      if (e.key === "ArrowRight") keys.right = true;
+      if ((e.key === "ArrowUp" || e.key === " ") && grounded) {
+        vy = jumpForce;
+        grounded = false;
+      }
+    });
+
+    document.addEventListener("keyup", e => {
+      if (e.key === "ArrowLeft") keys.left = false;
+      if (e.key === "ArrowRight") keys.right = false;
+    });
+
+    function loop() {
+      vx = 0;
+      if (keys.left) vx = -speed;
+      if (keys.right) vx = speed;
+
+      vy += gravity;
+      x += vx;
+      y += vy;
+
+      grounded = false;
+
+      platforms.forEach(p => {
+        const px = p.offsetLeft;
+        const py = p.offsetTop;
+        const pw = p.offsetWidth;
+        const ph = p.offsetHeight;
+
+        if (
+          x + 40 > px &&
+          x < px + pw &&
+          y + 40 > py &&
+          y + 40 < py + ph &&
+          vy > 0
+        ) {
+          y = py - 40;
+          vy = 0;
+          grounded = true;
+        }
+      });
+
+      // Prevent falling through floor
+      if (y > game.clientHeight - 40) {
+        y = game.clientHeight - 40;
+        vy = 0;
+        grounded = true;
+      }
+
+      player.style.left = `${x}px`;
+      player.style.top = `${y}px`;
+
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
+</body>
+</html>
