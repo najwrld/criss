@@ -13,7 +13,7 @@ password area (type the password: )
   <title>WHAT IS THE PASSWORD!!!!</title>
   <style>
     body {
-      margin: 50;
+      margin: 50px;
       background-color: #f2e38f;
       font-family: 'Courier New', monospace;
       height: 100vh;
@@ -56,32 +56,33 @@ password area (type the password: )
     }
 
     .shake {
-      animation: shake 1s ease;
+      animation: shake 10s ease;
     }
 
     .flash-red {
       animation: flashRed 0.4s ease;
     }
 
-    @keyframes shake {
-      0% { transform: translateX(0); }
-      25% { transform: translateX(-10px); }
-      50% { transform: translateX(10px); }
-      75% { transform: translateX(-10px); }
-      100% { transform: translateX(0); }
-    }
-
-    @keyframes flashRed {
-      0% { box-shadow: inset 0 0 0 6px red; }
-      100% { box-shadow: inset 0 0 0 2px white; }
-    }
-
     .slide-up {
       animation: slideUp 0.6s forwards;
     }
 
+    @keyframes shake {
+      0%   { transform: translateX(0); }
+      10%  { transform: translateX(-20px); }
+      20% { transform: translateX(20px);}
+      70%  { transform: translateY(-50px); }
+      75%  { transform: translateY(10px); }
+      100% { transform: translateX(0); }
+    }
+
+    @keyframes flashRed {
+      0%   { box-shadow: inset 0 0 0 6px red; }
+      100% { box-shadow: inset 0 0 0 2px white; }
+    }
+
     @keyframes slideUp {
-      0% { transform: translateY(0); opacity: 1; }
+      0%   { transform: translateY(0); opacity: 1; }
       100% { transform: translateY(-100vh); opacity: 0; }
     }
   </style>
@@ -96,16 +97,10 @@ password area (type the password: )
     const passwordInput = document.getElementById("passwordInput");
     const passwordBox = document.getElementById("passwordBox");
 
-
-
     passwordInput.addEventListener("keydown", function(e) {
       if (e.key === "Enter") {
 
-
-
         //type a password of your choice here biiiiiiiacthhh, honestly who in the worlds gon read ts. fk u to whoever
-
-
 
         if (passwordInput.value.toLowerCase() === "najwanisacunt") {
           passwordBox.classList.add("slide-up");
@@ -118,11 +113,6 @@ password area (type the password: )
           setTimeout(() => {
             passwordBox.classList.remove("shake", "flash-red");
           }, 400);
-
-
-
-
-
         }
       }
     });
