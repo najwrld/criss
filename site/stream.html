@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Screen Stream + Chat</title>
+  <style>
+    /* Reset and base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0; padding: 0;
+      font-family: monospace, monospace;
+      background: #f2e38f;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #app {
+      display: flex;
+      width: 960px;
+      height: 600px;
+      background: white;
+      border: 4px solid black;
+      box-shadow: 5px 5px 0 black;
+      overflow: hidden;
+      position: relative;
+      border-radius: 8px;
+    }
+
+    /* Left side: Video + controls */
+    #leftPanel {
+      flex: 2;
+      background: black;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    video {
+      flex-grow: 1;
+      width: 100%;
+      background: black;
+      border-bottom: 4px solid black;
+      object-fit: contain;
+    }
+
+    #streamInfo {
+      padding: 12px 16px;
+      background: #f5de5d;
+      color: black;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 4px solid black;
+      user-select: none;
+      font-size: 16px;
+    }
+
+    #viewerList {
+      font-size: 14px;
+      font-weight: normal;
+      margin-left: 10px;
+      color: #222;
+      max-width: 300px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    #controls {
+      display: flex;
+      gap: 12px;
+      padding: 12px 16px;
+      background: #f5de5d;
+      border-top: 4px solid black;
+      justify-content: flex-start;
+    }
+
+    button {
+      font-family: monospace;
+      font-weight: bold;
+      padding: 8px 16px;
+      border: 3px solid black;
+      background: black;
+      color: #f2e38f;
+      cursor: pointer;
+      transition: background-color 0.25s, color 0.25s;
+      user-select: none;
+      border-radius: 4px;
+    }
+    button:hover:not(:disabled) {
+      background: #f5de5d;
+      color: black;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Right side: Chat */
+    #rightPanel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-left: 4px solid black;
+      background: white;
+    }
+
+    #chatMessages {
+      flex-grow: 1;
+      padding: 10px 12px;
+      overflow-y: auto;
+      border-bottom: 4px solid black;
+      font-size: 14px;
+    }
+
+    .chatMessage {
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+    .chatMessage strong {
+      color: black;
+    }
+    .chatMessage .text {
+      margin-left: 6px;
+      color: #333;
+      white-space: pre-wrap;
+    }
+
+    #chatInputArea {
+      display: flex;
+      padding: 10px;
+      gap: 8px;
+      border-top: 4px solid black;
+      background: #f2e38f;
+    }
+
+    #chatUsername {
+      width: 90px;
+      padding: 6px;
+      border: 3px solid black;
+      font-family: monospace;
+      text-transform: capitalize;
+      outline: none;
+    }
+    #chatMessageInput {
+      flex-grow: 1;
+      padding: 6px;
+      border: 3px solid black;
+      font-family: monospace;
+      outline: none;
+    }
+
+    #chatSendBtn {
+      padding: 6px 16px;
+      background: black;
+      color: #f2e38f;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 4px;
+      transition: background-color 0.25s, color 0.25s;
+    }
+    #chatSendBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #chatSendBtn:hover:not(:disabled) {
+      background: #f5de5d;
+      color: black;
+    }
+
+    /* Modal */
+    #modalOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    #modalBox {
+      background: white;
+      padding: 24px 30px;
+      border-radius: 8px;
+      box-shadow: 3px 3px 0 black;
+      text-align: center;
+      width: 300px;
+    }
+    #modalBox h2 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-family: monospace;
+    }
+    #modalBox input {
+      width: 100%;
+      padding: 10px 8px;
+      font-family: monospace;
+      font-size: 16px;
+      border: 3px solid black;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      outline: none;
+      text-transform: capitalize;
+    }
+    #modalBox button {
+      width: 100%;
+      padding: 10px 0;
+      font-family: monospace;
+      font-weight: bold;
+      background: black;
+      color: #f2e38f;
+      border: 3px solid black;
+      cursor: pointer;
+      border-radius: 4px;
+      user-select: none;
+      transition: background-color 0.25s, color 0.25s;
+    }
+    #modalBox button:hover {
+      background: #f5de5d;
+      color: black;
+    }
+  </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body>
+
+  <div id="app">
+
+    <div id="leftPanel">
+      <video id="localVideo" autoplay muted playsinline style="display:none;"></video>
+      <video id="remoteVideo" autoplay playsinline style="display:none;"></video>
+
+      <div id="streamInfo">
+        <div id="streamStatus">No active stream</div>
+        <div id="viewerInfo">
+          Viewers: <span id="viewerCount">0</span>
+          <div id="viewerNames" style="font-style: italic; font-size: 12px; margin-top: 2px; max-width: 300px; overflow-x: auto; white-space: nowrap;"></div>
+        </div>
+      </div>
+      <div id="controls">
+        <button id="startStreamBtn">Start Streaming</button>
+        <button id="stopStreamBtn" style="display:none;">Stop Streaming</button>
+        <button id="endStreamBtn" style="display:none; background: #d42f2f; color: white;">End Stream</button>
+      </div>
+    </div>
+
+    <div id="rightPanel">
+      <div id="chatMessages"></div>
+      <div id="chatInputArea">
+        <input id="chatUsername" placeholder="Name" />
+        <input id="chatMessageInput" placeholder="Type a message..." />
+        <button id="chatSendBtn" disabled>Send</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal for entering name -->
+  <div id="modalOverlay" style="display:none;">
+    <div id="modalBox">
+      <h2 id="modalTitle">Enter your name</h2>
+      <input type="text" id="modalNameInput" placeholder="Your name" />
+      <button id="modalSubmitBtn">Submit</button>
+    </div>
+  </div>
+
+<script>
+  // Firebase config (your own project's config here)
+  const firebaseConfig = {
+    databaseURL: "https://criss-chat-default-rtdb.firebaseio.com/",
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // Firebase refs
+  const chatRef = db.ref('chatMessages');
+  const streamRef = db.ref('stream');
+  const viewersRef = db.ref('viewers');
+
+  // DOM elements
+  const startStreamBtn = document.getElementById('startStreamBtn');
+  const stopStreamBtn = document.getElementById('stopStreamBtn');
+  const endStreamBtn = document.getElementById('endStreamBtn');
+  const streamStatus = document.getElementById('streamStatus');
+  const viewerCountEl = document.getElementById('viewerCount');
+  const viewerNamesEl = document.getElementById('viewerNames');
+  const localVideo = document.getElementById('localVideo');
+  const remoteVideo = document.getElementById('remoteVideo');
+
+  // Chat elements
+  const chatMessages = document.getElementById('chatMessages');
+  const chatUsername = document.getElementById('chatUsername');
+  const chatMessageInput = document.getElementById('chatMessageInput');
+  const chatSendBtn = document.getElementById('chatSendBtn');
+
+  // Modal elements
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalNameInput = document.getElementById('modalNameInput');
+  const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+  const modalTitle = document.getElementById('modalTitle');
+
+  // State variables
+  let isStreaming = false;
+  let isViewing = false;
+  let localStream = null;
+  let peerConnection = null;
+  let viewerId = null;
+  let viewerName = '';
+  let streamerId = null;
+  let streamerName = null;
+  let modalCallback = null;
+
+  // STUN servers for WebRTC
+  const servers = {
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+  };
+
+  // Helper: Generate random id
+  function generateId() {
+    return Math.random().toString(36).substr(2, 9);
+  }
+
+  // Show modal to get user name
+  function askForName(title, callback) {
+    modalTitle.textContent = title;
+    modalNameInput.value = '';
+    modalOverlay.style.display = 'flex';
+    modalNameInput.focus();
+    modalCallback = callback;
+  }
+
+  modalSubmitBtn.addEventListener('click', () => {
+    const name = modalNameInput.value.trim();
+    if (!name) {
+      alert('Please enter your name');
+      return;
+    }
+    modalOverlay.style.display = 'none';
+    if (modalCallback) modalCallback(name);
+    modalCallback = null;
+  });
+
+  // Chat send button enable/disable
+  function updateChatSendBtn() {
+    chatSendBtn.disabled = !(chatUsername.value.trim() && chatMessageInput.value.trim());
+  }
+  chatUsername.addEventListener('input', updateChatSendBtn);
+  chatMessageInput.addEventListener('input', updateChatSendBtn);
+
+  // Send chat message
+  chatSendBtn.addEventListener('click', () => {
+    const name = chatUsername.value.trim();
+    const text = chatMessageInput.value.trim();
+    if (!name || !text) return;
+
+    chatRef.push({
+      username: name,
+      text: text,
+      timestamp: Date.now()
+    });
+    chatMessageInput.value = '';
+    chatSendBtn.disabled = true;
+  });
+
+  // Display chat messages
+  chatRef.limitToLast(100).on('child_added', snapshot => {
+    const data = snapshot.val();
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('chatMessage');
+
+    const nameStrong = document.createElement('strong');
+    nameStrong.textContent = data.username + ':';
+
+    const textSpan = document.createElement('span');
+    textSpan.classList.add('text');
+    textSpan.textContent = ' ' + data.text;
+
+    msgDiv.appendChild(nameStrong);
+    msgDiv.appendChild(textSpan);
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  });
+
+  // Listen for stream data changes
+  streamRef.on('value', snapshot => {
+    const streamData = snapshot.val();
+
+    if (streamData && streamData.isStreaming) {
+      streamerId = streamData.streamerId;
+      streamerName = streamData.streamerName || 'Anonymous';
+      streamStatus.textContent = `Streaming: ${streamerName}`;
+
+      startStreamBtn.style.display = 'none';
+      endStreamBtn.style.display = 'inline-block';
+
+      if (isStreaming) {
+        // Streamer: show local video, stop button visible
+        localVideo.style.display = 'block';
+        remoteVideo.style.display = 'none';
+        stopStreamBtn.style.display = 'inline-block';
+        isViewing = false;
+      } else {
+        // Viewer: show remote video, stop button hidden
+        localVideo.style.display = 'none';
+        remoteVideo.style.display = 'block';
+        stopStreamBtn.style.display = 'none';
+        if (!isViewing) startViewing();
+      }
+    } else {
+      // No active stream
+      streamerId = null;
+      streamerName = null;
+      streamStatus.textContent = 'No active stream';
+
+      startStreamBtn.style.display = 'inline-block';
+      stopStreamBtn.style.display = 'none';
+      endStreamBtn.style.display = 'none';
+
+      localVideo.style.display = 'none';
+      remoteVideo.style.display = 'none';
+
+      isStreaming = false;
+      isViewing = false;
+      cleanupConnection();
+
+      viewerCountEl.textContent = '0';
+      viewerNamesEl.textContent = '';
+    }
+  });
+
+  // Viewer list tracking
+  function updateViewersList(snapshot) {
+    const viewersData = snapshot.val() || {};
+    const names = Object.values(viewersData).map(v => v.name);
+    viewerCountEl.textContent = names.length;
+    viewerNamesEl.textContent = names.join(', ') || '(none)';
+  }
+  viewersRef.on('value', updateViewersList);
+
+  // Start streaming flow
+  startStreamBtn.addEventListener('click', () => {
+    askForName('Enter your name to start streaming', async (name) => {
+      viewerName = name;
+      isStreaming = true;
+
+      try {
+        localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      } catch (err) {
+        alert('Error getting screen capture: ' + err.message);
+        isStreaming = false;
+        return;
+      }
+
+      localVideo.srcObject = localStream;
+      localVideo.style.display = 'block';
+      remoteVideo.style.display = 'none';
+
+      peerConnection = createPeerConnection();
+
+      // Add tracks
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+      // Create offer and set local description
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      // Push stream info to Firebase
+      await streamRef.set({
+        isStreaming: true,
+        streamerId: generateId(),
+        streamerName: viewerName,
+        offer: offer.toJSON(),
+        answer: null,
+        iceCandidates: {
+          streamer: {},
+          viewer: {}
+        }
+      });
+
+      postSystemMessage(`${viewerName} started streaming 🎥`);
+
+      stopStreamBtn.style.display = 'inline-block';
+      startStreamBtn.style.display = 'none';
+      endStreamBtn.style.display = 'inline-block';
+
+      // Listen for answer from viewer
+      streamRef.child('answer').on('value', async (snapshot) => {
+        const answer = snapshot.val();
+        if (answer && peerConnection) {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        }
+      });
+
+      // Listen for ICE candidates from viewer
+      streamRef.child('iceCandidates').child('viewer').on('child_added', snapshot => {
+        const candidate = snapshot.val();
+        if (candidate && peerConnection) {
+          peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+      });
+    });
+  });
+
+  // Stop streaming (streamer only)
+  stopStreamBtn.addEventListener('click', async () => {
+    await endStreaming();
+    postSystemMessage(`${viewerName} stopped streaming.`);
+  });
+
+  // End stream (anyone can do it)
+  endStreamBtn.addEventListener('click', async () => {
+    await endStreaming();
+    postSystemMessage(`Stream ended by user.`);
+  });
+
+  // Create and setup RTCPeerConnection for streamer
+  function createPeerConnection() {
+    const pc = new RTCPeerConnection(servers);
+
+    pc.onicecandidate = event => {
+      if (event.candidate) {
+        streamRef.child('iceCandidates').child('streamer').push(event.candidate.toJSON());
+      }
+    };
+
+    return pc;
+  }
+
+  // Viewer logic: watch stream
+  async function startViewing() {
+    askForName('Enter your name to watch the stream', async (name) => {
+      viewerName = name;
+      viewerId = generateId();
+
+      try {
+        await viewersRef.child(viewerId).set({ name: viewerName });
+      } catch (e) {
+        console.error('Error adding viewer:', e);
+      }
+
+      window.addEventListener('beforeunload', () => {
+        viewersRef.child(viewerId).remove();
+      });
+
+      isViewing = true;
+      peerConnection = new RTCPeerConnection(servers);
+
+      // ICE candidates from streamer
+      streamRef.child('iceCandidates').child('streamer').on('child_added', snapshot => {
+        const candidate = snapshot.val();
+        if (candidate && peerConnection) {
+          peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+      });
+
+      // ICE candidates from viewer
+      peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+          streamRef.child('iceCandidates').child('viewer').push(event.candidate.toJSON());
+        }
+      };
+
+      peerConnection.ontrack = event => {
+        remoteVideo.srcObject = event.streams[0];
+        remoteVideo.style.display = 'block';
+      };
+
+      // Get offer and set remote desc
+      const offerSnapshot = await streamRef.child('offer').once('value');
+      const offer = offerSnapshot.val();
+
+      if (!offer) {
+        alert('No offer found - stream might have ended.');
+        return;
+      }
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+      // Create answer and set local desc
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      // Push answer to Firebase
+      await streamRef.update({ answer: answer.toJSON() });
+    });
+  }
+
+  // End streaming or viewing: cleanup and reset firebase
+  async function endStreaming() {
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+
+    isStreaming = false;
+    isViewing = false;
+
+    await streamRef.set({
+      isStreaming: false,
+      streamerId: null,
+      streamerName: null,
+      offer: null,
+      answer: null,
+      iceCandidates: {
+        streamer: {},
+        viewer: {}
+      }
+    });
+
+    await viewersRef.remove();
+
+    streamStatus.textContent = 'No active stream';
+    startStreamBtn.style.display = 'inline-block';
+    stopStreamBtn.style.display = 'none';
+    endStreamBtn.style.display = 'none';
+    localVideo.style.display = 'none';
+    remoteVideo.style.display = 'none';
+    viewerCountEl.textContent = '0';
+    viewerNamesEl.textContent = '';
+  }
+
+  // Cleanup local peer connection & tracks
+  function cleanupConnection() {
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+  }
+
+  // System message helper
+  function postSystemMessage(text) {
+    chatRef.push({
+      username: 'System',
+      text: text,
+      timestamp: Date.now()
+    });
+  }
+</script>
+
+</body>
+</html>
