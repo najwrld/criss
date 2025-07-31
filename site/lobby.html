@@ -1,463 +1,607 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Lobby</title>
-  <style>
-    body {
-      font-family: monospace;
-      background: #f2e38f;
-      color: black;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
-      margin: 0;
-      height: 100vh;
-      box-sizing: border-box;
-    }
-    h1 {
-      margin-bottom: 5px;
-    }
-    #status {
-      margin-bottom: 15px;
-      font-weight: bold;
-      min-height: 1.2em;
-      text-align: center;
-      max-width: 400px;
-    }
-    #playersList {
-      width: 400px;
-      border: 3px solid black;
-      background: white;
-      padding: 10px;
-      box-sizing: border-box;
-      max-height: 60vh;
-      overflow-y: auto;
-      margin-bottom: 15px;
-    }
-    .player {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      justify-content: space-between;
-      padding: 6px 0;
-      border-bottom: 1px solid #ccc;
-    }
-    .player:last-child {
-      border-bottom: none;
-    }
-    .color-box {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background-color: yellow;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 16px;
-      user-select: none;
-    }
-    button {
-      padding: 8px 15px;
-      font-family: monospace;
-      font-weight: bold;
-      cursor: pointer;
-      background: black;
-      color: #f2e38f;
-      border: 3px solid black;
-      transition: background 0.3s ease, color 0.3s ease;
-      margin-left: 10px;
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    button:hover:not(:disabled) {
-      background: #f5de5d;
-      color: black;
-    }
-    #nameInput {
-      padding: 8px;
-      font-family: monospace;
-      font-weight: bold;
-      font-size: 1em;
-      border: 3px solid black;
-      width: 200px;
-      box-sizing: border-box;
-    }
-    #colorPicker {
-      width: 34px;
-      height: 34px;
-      border: 3px solid black;
-      border-radius: 8px;
-      cursor: pointer;
-      background-color: #f5de5d; /* default yellow */
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      padding: 0;
-      margin-left: 10px;
-    }
-    #colorPicker::-webkit-color-swatch-wrapper {
-      padding: 0;
-      border-radius: 8px;
-    }
-    #colorPicker::-webkit-color-swatch {
-      border-radius: 8px;
-    }
-    #joinContainer {
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lobby with Ready & Chat</title>
+<style>
+  /* --- Reset & basics --- */
+  body, html {
+    margin: 0; padding: 0; height: 100%;
+    font-family: monospace, monospace;
+    background: #f2e38f;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  * {
+    box-sizing: inherit;
+  }
 
-    /* New styles for word selection */
-    #wordSelectionContainer {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      max-width: 400px;
-      width: 100%;
-    }
-    #wordSelectionContainer input {
-      font-family: monospace;
-      font-weight: bold;
-      font-size: 1em;
-      padding: 8px;
-      margin: 5px 0;
-      border: 3px solid black;
-      width: 100%;
-      box-sizing: border-box;
-      text-transform: lowercase;
-    }
-    #submitWordsBtn {
-      margin-top: 10px;
-      background: black;
-      color: #f2e38f;
-      border: 3px solid black;
-      font-weight: bold;
-      cursor: pointer;
-      padding: 8px 15px;
-      transition: background 0.3s ease, color 0.3s ease;
-    }
-    #submitWordsBtn:hover {
-      background: #f5de5d;
-      color: black;
-    }
-    #submitWordsBtn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  </style>
-  <!-- Firebase Compat SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  /* --- Join Modal --- */
+  #joinModal {
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  #joinForm {
+    background: #f2e38f;
+    border: 4px solid black;
+    padding: 20px 30px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+  }
+  #joinForm input[type="text"] {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.2em;
+    padding: 10px;
+    width: 100%;
+    border: 4px solid black;
+    border-radius: 6px;
+    text-align: center;
+  }
+  #joinForm input[type="color"] {
+    width: 50px;
+    height: 50px;
+    border: 4px solid black;
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 0;
+  }
+  #joinBtn {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1em;
+    cursor: pointer;
+    background: black;
+    color: #f2e38f;
+    border: 4px solid black;
+    padding: 10px 0;
+    width: 100%;
+    transition: background-color 0.3s ease;
+    border-radius: 6px;
+  }
+  #joinBtn:hover:not(:disabled) {
+    background: #f5de5d;
+    color: black;
+  }
+  #joinBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* --- Lobby container --- */
+  #lobbyContainer {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 420px;
+    height: 90vh;
+    background: #fff;
+    border: 4px solid black;
+    border-radius: 10px;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  h1 {
+    margin: 0 0 15px 0;
+    font-weight: bold;
+    font-size: 2em;
+    color: black;
+  }
+
+  /* --- Status message --- */
+  #status {
+    font-weight: bold;
+    min-height: 1.5em;
+    text-align: center;
+    margin-bottom: 15px;
+    color: #333;
+  }
+
+  /* --- Players List --- */
+  #playersList {
+    width: 100%;
+    max-height: 150px;
+    border: 4px solid black;
+    background: #f9f9f9;
+    padding: 10px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+  }
+  .player {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 5px;
+    border-bottom: 1px solid #ddd;
+  }
+  .player:last-child {
+    border-bottom: none;
+  }
+  .player .color-box {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+  .player-name {
+    flex-grow: 1;
+    font-weight: bold;
+  }
+  .player-ready {
+    font-weight: bold;
+    min-width: 70px;
+    text-align: center;
+  }
+  .ready-true {
+    color: green;
+  }
+  .ready-false {
+    color: red;
+  }
+
+  /* --- Ready Button --- */
+  #readyBtn {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 10px 0;
+    width: 100%;
+    background: black;
+    color: #f2e38f;
+    border: 4px solid black;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: background-color 0.3s ease;
+  }
+  #readyBtn:hover:not(:disabled) {
+    background: #f5de5d;
+    color: black;
+  }
+  #readyBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* --- Word selection container --- */
+  #wordSelectionContainer {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  #wordInstructions {
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  #wordInputs input {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 8px;
+    margin-bottom: 10px;
+    width: 100%;
+    border: 4px solid black;
+    border-radius: 6px;
+    box-sizing: border-box;
+    text-transform: lowercase;
+  }
+  #submitWordsBtn {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 10px 0;
+    width: 100%;
+    background: black;
+    color: #f2e38f;
+    border: 4px solid black;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  #submitWordsBtn:hover:not(:disabled) {
+    background: #f5de5d;
+    color: black;
+  }
+  #submitWordsBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* --- Chat container --- */
+  #chatContainer {
+    width: 100%;
+    height: 180px;
+    background: #fff;
+    border: 4px solid black;
+    border-radius: 10px;
+    overflow-y: auto;
+    padding: 10px;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    margin-bottom: 10px;
+  }
+  #chatInputContainer {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+  }
+  #chatInput {
+    flex-grow: 1;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 10px;
+    border: 4px solid black;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+  #sendChatBtn {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 10px 20px;
+    background: black;
+    color: #f2e38f;
+    border: 4px solid black;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  #sendChatBtn:hover {
+    background: #f5de5d;
+    color: black;
+  }
+</style>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
 </head>
 <body>
+
+<!-- Join modal -->
+<div id="joinModal" role="dialog" aria-modal="true" aria-labelledby="joinTitle">
+  <form id="joinForm" autocomplete="off">
+    <h2 id="joinTitle">Join the Lobby</h2>
+    <input id="nameInput" type="text" placeholder="Enter your name" required autofocus />
+    <input id="colorPicker" type="color" value="#f5de5d" title="Pick your color" />
+    <button id="joinBtn" type="submit">Join</button>
+  </form>
+</div>
+
+<!-- Lobby container -->
+<div id="lobbyContainer" aria-live="polite">
   <h1>Lobby</h1>
+  <div id="status" aria-live="assertive"></div>
 
-  <div id="joinContainer">
-    <input type="text" id="nameInput" placeholder="Enter your name" autocomplete="off" />
-    <input type="color" id="colorPicker" title="Choose your color" value="#f5de5d" />
-    <button id="joinBtn">Join Lobby</button>
-  </div>
+  <div id="playersList" aria-label="List of players" role="list"></div>
 
-  <div id="status"></div>
+  <button id="readyBtn" aria-pressed="false" aria-label="Toggle Ready State" disabled>Ready</button>
 
-  <div id="playersList">No players yet.</div>
-  <button id="readyBtn" disabled>Ready</button>
-
-  <!-- Word Selection UI -->
-  <div id="wordSelectionContainer">
-    <div id="wordInstructions" style="margin-bottom: 10px; font-weight: bold; text-align:center;"></div>
+  <!-- Word selection -->
+  <div id="wordSelectionContainer" aria-live="polite">
+    <div id="wordInstructions"></div>
     <div id="wordInputs"></div>
     <button id="submitWordsBtn" disabled>Submit Words</button>
   </div>
 
-  <script>
-    // Firebase config - your project details here:
-    const firebaseConfig = {
-      apiKey: "AIzaSyA9eWIxt6b_TMDDSNWoACZntoE072R-Ko8",
-      authDomain: "scrib-3b193.firebaseapp.com",
-      databaseURL: "https://scrib-3b193-default-rtdb.firebaseio.com",
-      projectId: "scrib-3b193",
-      storageBucket: "scrib-3b193.firebasestorage.app",
-      messagingSenderId: "517150259600",
-      appId: "1:517150259600:web:a584898ab7ca4cebfddb15"
+  <!-- Chat section -->
+  <div id="chatContainer" aria-live="polite" aria-atomic="false" role="log" aria-relevant="additions"></div>
+  <div id="chatInputContainer">
+    <input id="chatInput" type="text" placeholder="Type a message..." autocomplete="off" aria-label="Chat message input" />
+    <button id="sendChatBtn" aria-label="Send chat message">Send</button>
+  </div>
+</div>
+
+<script>
+  // Firebase config - replace with your own config if needed
+  const firebaseConfig = {
+    apiKey: "AIzaSyA9eWIxt6b_TMDDSNWoACZntoE072R-Ko8",
+    authDomain: "scrib-3b193.firebaseapp.com",
+    databaseURL: "https://scrib-3b193-default-rtdb.firebaseio.com",
+    projectId: "scrib-3b193",
+    storageBucket: "scrib-3b193.firebasestorage.app",
+    messagingSenderId: "517150259600",
+    appId: "1:517150259600:web:a584898ab7ca4cebfddb15"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  const db = firebase.database();
+
+  // Database refs
+  const lobbyRef = db.ref('lobby');
+  const playersRef = lobbyRef.child('players');
+  const gameStateRef = lobbyRef.child('gameState');
+  const chatRef = lobbyRef.child('chat');
+
+  // DOM elements
+  const joinModal = document.getElementById('joinModal');
+  const joinForm = document.getElementById('joinForm');
+  const nameInput = document.getElementById('nameInput');
+  const colorPicker = document.getElementById('colorPicker');
+  const joinBtn = document.getElementById('joinBtn');
+
+  const lobbyContainer = document.getElementById('lobbyContainer');
+  const statusDiv = document.getElementById('status');
+  const playersListDiv = document.getElementById('playersList');
+  const readyBtn = document.getElementById('readyBtn');
+
+  const wordSelectionContainer = document.getElementById('wordSelectionContainer');
+  const wordInstructions = document.getElementById('wordInstructions');
+  const wordInputsDiv = document.getElementById('wordInputs');
+  const submitWordsBtn = document.getElementById('submitWordsBtn');
+
+  const chatContainer = document.getElementById('chatContainer');
+  const chatInput = document.getElementById('chatInput');
+  const sendChatBtn = document.getElementById('sendChatBtn');
+
+  // Player state variables
+  let playerId = null;
+  let username = null;
+  let playerColor = null;
+  let isSpectator = false;
+  let wordsNeeded = 0;
+  let countdownInterval = null;
+  let lastStatusSystemMessage = '';
+
+  // Escape text to avoid HTML injection in chat
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Append chat message to chat box
+  function appendChatMessage(msg, color = 'black', isSystem = false) {
+    const div = document.createElement('div');
+    if (isSystem) {
+      div.innerHTML = `<em style="color:blue;">${escapeHtml(msg)}</em>`;
+    } else {
+      div.innerHTML = msg;
+      div.style.color = color;
+    }
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  // Append system message and push to DB (avoid duplicates)
+  function appendSystemMessage(text) {
+    // Prevent spamming the same system message repeatedly
+    if (lastStatusSystemMessage === text) return;
+    lastStatusSystemMessage = text;
+
+    appendChatMessage(`[System] ${text}`, 'blue', true);
+    chatRef.push({
+      text: `[System] ${text}`,
+      isSystem: true,
+      timestamp: Date.now()
+    });
+  }
+
+  // Send chat message to Firebase DB
+  function sendChatMessage(text) {
+    if (!playerId || !text.trim()) return;
+    const msg = {
+      playerId,
+      username,
+      text: text.trim(),
+      color: playerColor,
+      timestamp: Date.now()
     };
+    chatRef.push(msg);
+  }
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // Database references
-    const lobbyRef = db.ref('lobby');
-    const playersRef = lobbyRef.child('players');
-    const gameStateRef = lobbyRef.child('gameState');
-
-    // UI Elements
-    const statusDiv = document.getElementById('status');
-    const playersListDiv = document.getElementById('playersList');
-    const readyBtn = document.getElementById('readyBtn');
-    const joinBtn = document.getElementById('joinBtn');
-    const nameInput = document.getElementById('nameInput');
-    const colorPicker = document.getElementById('colorPicker');
-    const joinContainer = document.getElementById('joinContainer');
-
-    // Word selection UI
-    const wordSelectionContainer = document.getElementById('wordSelectionContainer');
-    const wordInstructions = document.getElementById('wordInstructions');
-    const wordInputsDiv = document.getElementById('wordInputs');
-    const submitWordsBtn = document.getElementById('submitWordsBtn');
-
-    let playerId = null;
-    let username = null;
-    let playerColor = null;
-    let isSpectator = false;
-    let wordsNeeded = 0;
-
-    readyBtn.disabled = true;
-
-    // Join lobby function
-    function join() {
-      const name = nameInput.value.trim();
-      if (!name) {
-        alert('Please enter your name');
-        return;
+  // Listen for chat messages and render
+  function listenChat() {
+    chatRef.off();
+    chatRef.limitToLast(100).on('child_added', snapshot => {
+      const msg = snapshot.val();
+      if (!msg) return;
+      if (msg.isSystem) {
+        appendChatMessage(msg.text, 'blue', true);
+      } else if (msg.username && msg.text) {
+        const formatted = `<strong style="color:${escapeHtml(msg.color)}">${escapeHtml(msg.username)}:</strong> ${escapeHtml(msg.text)}`;
+        appendChatMessage(formatted);
       }
-      username = name;
-      playerColor = colorPicker.value || "#f5de5d";
-
-      joinContainer.style.display = 'none';
-      joinBtn.disabled = true;
-      nameInput.disabled = true;
-      colorPicker.disabled = true;
-      statusDiv.textContent = 'Connecting to lobby...';
-
-      joinLobby();
-    }
-
-    joinBtn.addEventListener('click', join);
-    nameInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') join();
     });
+  }
 
-    async function joinLobby() {
-      try {
-        const snapshot = await playersRef.once('value');
-        const players = snapshot.val() || {};
+  // Render the list of players in lobby
+  function renderPlayers(players) {
+    playersListDiv.innerHTML = '';
+    const entries = Object.entries(players);
+    if (entries.length === 0) {
+      playersListDiv.textContent = 'No players in lobby yet.';
+      return;
+    }
+    entries.forEach(([id, player]) => {
+      const div = document.createElement('div');
+      div.className = 'player';
 
-        const activePlayersCount = Object.values(players).filter(p => !p.isSpectator).length;
-        isSpectator = activePlayersCount >= 10;
+      // Color circle
+      const colorBox = document.createElement('div');
+      colorBox.className = 'color-box';
+      colorBox.style.backgroundColor = player.color || '#f5de5d';
 
-        // Add this player
-        const newPlayerRef = playersRef.push();
-        playerId = newPlayerRef.key;
+      // Name + spectator label
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'player-name';
+      nameSpan.textContent = player.username + (player.isSpectator ? ' (Spectator)' : '');
 
-        await newPlayerRef.set({
-          username,
-          color: playerColor,
-          ready: false,
-          isSpectator,
-          score: 0,
-          words: []
-        });
+      // Ready state text
+      const readySpan = document.createElement('span');
+      readySpan.className = 'player-ready ' + (player.ready ? 'ready-true' : 'ready-false');
+      readySpan.textContent = player.ready ? 'READY' : 'Not Ready';
 
-        statusDiv.textContent = isSpectator
-          ? "You joined as a Spectator (max 10 players allowed)."
-          : `Welcome, ${username}!`;
+      div.appendChild(colorBox);
+      div.appendChild(nameSpan);
+      div.appendChild(readySpan);
 
-        readyBtn.disabled = isSpectator;
+      playersListDiv.appendChild(div);
+    });
+  }
 
-        listenLobby();
-      } catch (error) {
-        statusDiv.textContent = "Error connecting to lobby. Try reload.";
-        console.error("Join Lobby error:", error);
-      }
+  // Check if game can start and handle countdown
+  function checkAllReady(players) {
+    const activePlayers = Object.values(players).filter(p => !p.isSpectator);
+    if (activePlayers.length === 0) {
+      updateStatusAndSystem("Waiting for players...");
+      clearCountdown();
+      return;
     }
 
-    // Listen for lobby changes (players & gamestate)
-    function listenLobby() {
-      playersRef.on('value', snapshot => {
-        const players = snapshot.val() || {};
-        renderPlayers(players);
-        checkAllReady(players);
-      });
-
-      gameStateRef.on('value', snapshot => {
-        const gameState = snapshot.val();
-        if (gameState === 'wordSelection') {
-          startWordSelectionPhase();
-        } else if (gameState === 'drawing') {
-          statusDiv.textContent = 'Game started! Drawing phase... (not implemented yet)';
-          // Here you will add drawing UI and logic later
-          hideWordSelection();
-          readyBtn.style.display = 'none';
-        } else {
-          statusDiv.textContent = isSpectator
-            ? "You are a spectator."
-            : "Waiting for all players to ready up...";
-          wordSelectionContainer.style.display = 'none';
-          readyBtn.style.display = 'inline-block';
-        }
-      });
+    if (activePlayers.length < 2) {
+      updateStatusAndSystem("Waiting for more players...");
+      clearCountdown();
+      return;
     }
 
-    function renderPlayers(players) {
-      playersListDiv.innerHTML = '';
-      const entries = Object.entries(players);
-      if (entries.length === 0) {
-        playersListDiv.textContent = 'No players in lobby yet.';
-        return;
-      }
-      entries.forEach(([id, player]) => {
-        const div = document.createElement('div');
-        div.className = 'player';
+    const allReady = activePlayers.every(p => p.ready);
 
-        const colorBox = document.createElement('div');
-        colorBox.className = 'color-box';
-        colorBox.style.backgroundColor = player.color || '#f5de5d';
-        colorBox.textContent = '☺'; // smiley face
-        div.appendChild(colorBox);
-
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = player.username + (player.isSpectator ? ' (Spectator)' : '');
-        div.appendChild(nameSpan);
-
-        const readySpan = document.createElement('span');
-        readySpan.textContent = player.ready ? 'READY' : 'Not Ready';
-        readySpan.style.color = player.ready ? 'green' : 'red';
-        div.appendChild(readySpan);
-
-        playersListDiv.appendChild(div);
-      });
+    if (allReady) {
+      // Start countdown to game start
+      startCountdown(5, activePlayers.length);
+    } else {
+      clearCountdown();
+      statusDiv.textContent = isSpectator
+        ? "You are a spectator."
+        : "Waiting for all players to ready up...";
+      lastStatusSystemMessage = ''; // Reset so system messages can reappear on next ready-up
     }
+  }
 
-    // Check if all active players are ready, update gameState if yes
-    function checkAllReady(players) {
-      const activePlayers = Object.values(players).filter(p => !p.isSpectator);
-      if (activePlayers.length === 0) {
-        statusDiv.textContent = "Waiting for players...";
-        return;
-      }
+  // Helper: update status text and system message once
+  function updateStatusAndSystem(text) {
+    statusDiv.textContent = text;
+    appendSystemMessage(text);
+  }
 
-      const allReady = activePlayers.every(p => p.ready);
+  // Clear countdown interval if running
+  function clearCountdown() {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
 
-      if (allReady) {
-        statusDiv.textContent = "All players are ready! Starting word selection...";
-        lobbyRef.update({ gameState: "wordSelection" });
+  // Start countdown to game start
+  function startCountdown(seconds, playerCount) {
+    if (countdownInterval) return;
+
+    let remaining = seconds;
+    updateStatusAndSystem(`All ${playerCount} players ready. Starting game in ${remaining} seconds...`);
+
+    countdownInterval = setInterval(() => {
+      remaining--;
+      if (remaining > 0) {
+        statusDiv.textContent = `All players ready! Starting game in ${remaining} seconds...`;
       } else {
-        statusDiv.textContent = isSpectator
-          ? "You are a spectator."
-          : "Waiting for all players to ready up...";
+        clearCountdown();
+        statusDiv.textContent = 'Starting game now!';
+        lobbyRef.update({ gameState: 'wordSelection' });
       }
+    }, 1000);
+  }
+
+  // Join lobby handler - triggered on form submit
+  joinForm.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const name = nameInput.value.trim();
+    if (!name) {
+      alert('Please enter your name');
+      return;
     }
 
-    readyBtn.addEventListener('click', () => {
-      if (!playerId) return;
+    username = name;
+    playerColor = colorPicker.value || '#f5de5d';
 
-      playersRef.child(playerId).once('value').then(snapshot => {
-        const currentReady = snapshot.val().ready;
-        playersRef.child(playerId).update({ ready: !currentReady });
-      });
-    });
+    joinBtn.disabled = true;
+    nameInput.disabled = true;
+    colorPicker.disabled = true;
 
-    // Word selection phase logic
-    function startWordSelectionPhase() {
-      readyBtn.style.display = 'none';
-      wordSelectionContainer.style.display = 'flex';
-      joinContainer.style.display = 'none';
+    try {
+      const snapshot = await playersRef.once('value');
+      const players = snapshot.val() || {};
+      const activePlayersCount = Object.values(players).filter(p => !p.isSpectator).length;
 
-      // Determine number of words needed by rules
-      playersRef.once('value').then(snapshot => {
-        const players = snapshot.val() || {};
-        const activePlayers = Object.values(players).filter(p => !p.isSpectator);
+      isSpectator = activePlayersCount >= 10;
 
-        const count = activePlayers.length;
-        if (count === 2) wordsNeeded = 3;
-        else if (count > 6) wordsNeeded = 1;
-        else wordsNeeded = 2;
+      const newPlayerRef = playersRef.push();
+      playerId = newPlayerRef.key;
 
-        if (isSpectator) {
-          wordSelectionContainer.style.display = 'none'; // spectators don't select words
-          statusDiv.textContent = "You are a spectator, waiting for the game...";
-          return;
-        }
+      await newPlayer
+      Ref.set({
+username,
+color: playerColor,
+ready: false,
+isSpectator
+});
+  listenChat();
 
-        statusDiv.textContent = `Please enter your ${wordsNeeded} word${wordsNeeded > 1 ? 's' : ''} to draw.`;
+  joinModal.style.display = 'none';
+  lobbyContainer.style.display = 'flex';
 
-        renderWordInputs(wordsNeeded);
-      });
-    }
+  readyBtn.disabled = false;
+  readyBtn.textContent = isSpectator ? 'Spectator' : 'Ready';
+  readyBtn.disabled = isSpectator;
 
-    function renderWordInputs(count) {
-      wordInputsDiv.innerHTML = '';
-      for (let i = 0; i < count; i++) {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = `Word ${i + 1}`;
-        input.maxLength = 15;
-        input.autocomplete = 'off';
-        input.addEventListener('input', checkWordsFilled);
-        wordInputsDiv.appendChild(input);
-      }
-      checkWordsFilled();
-    }
+} catch (err) {
+  console.error('Failed to join lobby:', err);
+  alert('Could not join lobby. Please try again.');
+  joinBtn.disabled = false;
+}
+});
 
-    function checkWordsFilled() {
-      const inputs = wordInputsDiv.querySelectorAll('input');
-      let allFilled = true;
-      inputs.forEach(input => {
-        if (input.value.trim() === '') allFilled = false;
-      });
-      submitWordsBtn.disabled = !allFilled;
-    }
+// Handle ready toggle
+readyBtn.addEventListener('click', async () => {
+if (!playerId || isSpectator) return;
+const playerRef = playersRef.child(playerId);
+const snap = await playerRef.once('value');
+const current = snap.val();
+await playerRef.update({ ready: !current.ready });
+});
 
-    submitWordsBtn.addEventListener('click', () => {
-      const inputs = wordInputsDiv.querySelectorAll('input');
-      const words = [];
-      inputs.forEach(input => {
-        words.push(input.value.trim().toLowerCase());
-      });
+// Send chat message
+sendChatBtn.addEventListener('click', () => {
+const msg = chatInput.value.trim();
+if (msg) {
+sendChatMessage(msg);
+chatInput.value = '';
+}
+});
+chatInput.addEventListener('keydown', e => {
+if (e.key === 'Enter') sendChatBtn.click();
+});
 
-      // Save words to Firebase
-      playersRef.child(playerId).update({
-        words,
-        ready: false // reset ready for next phase or just keep as is
-      });
+// Realtime updates
+playersRef.on('value', snapshot => {
+const players = snapshot.val() || {};
+renderPlayers(players);
+checkAllReady(players);
+});
 
-      wordSelectionContainer.style.display = 'none';
-      statusDiv.textContent = 'Words submitted! Waiting for others...';
-
-      checkAllPlayersSubmittedWords();
-    });
-
-    function checkAllPlayersSubmittedWords() {
-      playersRef.once('value').then(snapshot => {
-        const players = snapshot.val() || {};
-        const activePlayers = Object.values(players).filter(p => !p.isSpectator);
-
-        // Check if all active players have words with expected length
-        const allSubmitted = activePlayers.every(p => Array.isArray(p.words) && p.words.length === wordsNeeded);
-
-        if (allSubmitted) {
-          // Advance to drawing phase
-          lobbyRef.update({ gameState: 'drawing' });
-        } else {
-          // Wait and check again in a few seconds
-          setTimeout(checkAllPlayersSubmittedWords, 3000);
-        }
-      });
-    }
-
-    // Remove player on leave
-    window.addEventListener('beforeunload', () => {
-      if (playerId) {
-        playersRef.child(playerId).remove();
-      }
-    });
-
-  </script>
-</body>
-</html>
+// On disconnect, clean up this player
+window.addEventListener('beforeunload', () => {
+if (playerId) {
+playersRef.child(playerId).remove();
+}
+});
+</script> </body> </html>
