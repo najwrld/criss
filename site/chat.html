@@ -2,543 +2,187 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Streaming Room with Chat</title>
+  <title>Chat</title>
   <style>
-    body {
-      font-family: monospace;
-      background: #f2e38f;
-      margin: 0; padding: 0;
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Press Start 2P', monospace;
+      background-color: #f2e38f;
+      color: #000;
+      overflow: hidden;
+    }
+
+    #name-entry {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f2e38f;
+    }
+
+    #name-entry input,
+    #name-entry button {
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px;
+      margin: 10px;
+      border: none;
+      background: #000;
+      color: #f2e38f;
+      width: 280px;
+      text-align: center;
+    }
+
+    #chat-container {
       display: flex;
       flex-direction: column;
       height: 100vh;
-      overflow: hidden;
-    }
-    #streaming-container {
-      display: flex;
-      flex-grow: 1;
-      gap: 20px;
+      background-color: #f2e38f;
       padding: 20px;
       box-sizing: border-box;
-      justify-content: center;
-      align-items: flex-start;
-    }
-    #video-container {
-      flex: 1;
-      max-width: 600px;
-      background: black;
-      border: 4px solid black;
-      height: 80vh;
       position: relative;
     }
-    video {
-      width: 100%;
-      height: 100%;
-      background: black;
-      object-fit: contain;
-    }
-    #chat-container {
-      width: 400px;
-      height: 80vh;
-      background: white;
-      border: 4px solid black;
-      display: flex;
-      flex-direction: column;
-    }
-    #chat-messages {
-      flex-grow: 1;
-      padding: 10px;
-      overflow-y: auto;
-    }
-    #chat-input-area {
-      display: flex;
-      padding: 10px;
-      gap: 10px;
-      box-sizing: border-box;
-      border-top: 3px solid black;
-    }
-    #username, #message {
-      font-family: monospace;
-      font-weight: bold;
-      padding: 6px;
-      border: 3px solid black;
-      box-sizing: border-box;
-    }
-    #username {
-      width: 100px;
-      text-transform: capitalize;
-    }
-    #message {
-      flex-grow: 1;
-    }
-    button {
-      cursor: pointer;
-      font-family: monospace;
-      font-weight: bold;
+
+    #exit-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #000;
+      color: #f2e38f;
       border: none;
-      background: black;
-      color: #f2e38f;
-      padding: 6px 12px;
-      user-select: none;
-      transition: background 0.3s ease, color 0.3s ease;
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    button:hover:not(:disabled) {
-      background: #f5de5d;
-      color: black;
-    }
-    #stream-controls {
-      width: 100%;
-      max-width: 600px;
-      margin: 10px auto;
-      text-align: center;
-      font-weight: bold;
-      color: black;
-      font-size: 18px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    #viewer-info {
-      font-size: 14px;
-      font-weight: normal;
-      color: #333;
-      text-align: left;
-      min-width: 200px;
-      max-width: 300px;
-    }
-    #exit-button {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: black;
-      color: #f2e38f;
-      border: 4px solid black;
-      padding: 12px 20px;
-      font-family: 'Press Start 2P', monospace;
-      font-weight: bold;
+      font-family: inherit;
+      padding: 8px 12px;
       cursor: pointer;
-      user-select: none;
-      transition: background 0.3s ease, color 0.3s ease;
-      z-index: 1000;
+      font-size: 12px;
     }
-    #exit-button:hover {
-      background: #f5de5d;
-      color: black;
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .message {
+      margin-bottom: 20px;
+      word-break: break-word;
+    }
+
+    .timestamp {
+      font-size: 10px;
+      color: #444;
+      margin-left: 5px;
+    }
+
+    #message-form {
+      display: flex;
+      gap: 10px;
+    }
+
+    #message-input {
+      flex: 1;
+      padding: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      border: none;
+      background: #fff;
+      color: #000;
+    }
+
+    #message-form button {
+      padding: 12px 16px;
+      font-family: inherit;
+      font-size: 14px;
+      background: #000;
+      color: #f2e38f;
+      border: none;
+      cursor: pointer;
+    }
+
+    ::selection {
+      background: #000;
+      color: #f2e38f;
     }
   </style>
-
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
 <body>
+  <form id="name-entry">
+    <input type="text" id="name-input" placeholder="Enter your name" required />
+    <button type="submit">Enter</button>
+  </form>
 
-  <div id="streaming-container">
-    <div id="video-container">
-      <video id="remote-video" autoplay playsinline></video>
-    </div>
-
-    <div id="chat-container">
-      <div id="chat-messages"></div>
-      <div id="chat-input-area">
-        <input id="username" type="text" placeholder="Your Name" />
-        <input id="message" type="text" placeholder="Type a message..." />
-        <button id="send-btn" disabled>Send</button>
-      </div>
-    </div>
+  <div id="chat-container" style="display: none;">
+    <button id="exit-btn">Exit</button>
+    <div id="messages"></div>
+    <form id="message-form">
+      <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off" />
+      <button type="submit">Send</button>
+    </form>
   </div>
 
-  <div id="stream-controls">
-    <div id="stream-status">No active stream</div>
-    <div id="viewer-info">
-      <div id="viewer-count">Viewers: 0</div>
-      <div id="viewer-names" style="margin-top: 5px; font-style: italic; font-size: 13px;"></div>
-    </div>
-    <button id="start-stream-btn">Start Streaming</button>
-    <button id="stop-stream-btn" style="display:none;">Stop Streaming</button>
-    <button id="end-stream-btn" style="display:none; background:#d42f2f; color:white;">End Stream</button>
-  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-  <button id="exit-button">Exit</button>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDJrX06X6t6guHnQJD6qYZlg9qkBgxGaoE",
+      authDomain: "criss-chat.firebaseapp.com",
+      databaseURL: "https://criss-chat-default-rtdb.firebaseio.com",
+      projectId: "criss-chat",
+      storageBucket: "criss-chat.appspot.com",
+      messagingSenderId: "828738573835",
+      appId: "1:828738573835:web:bac9f6048f101efa83d90e"
+    };
 
-<script>
-  // --- FIREBASE SETUP ---
-  const firebaseConfig = {
-    databaseURL: "https://criss-chat-default-rtdb.firebaseio.com/",
-    // Add other config keys here if you have them (apiKey, authDomain, etc)
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const messagesRef = ref(db, "chatmessages");
 
-  // --- REFERENCES ---
-  const chatRef = db.ref('chatMessages');
-  const streamRef = db.ref('stream');
-  const viewersRef = db.ref('viewers');
+    let username = "";
 
-  // Stream sub refs
-  const isStreamingRef = streamRef.child('isStreaming');
-  const streamerIdRef = streamRef.child('streamerId');
-  const offerRef = streamRef.child('offer');
-  const answerRef = streamRef.child('answer');
-  const iceCandidatesRef = streamRef.child('iceCandidates');
+    document.getElementById("name-entry").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const nameInput = document.getElementById("name-input");
+      if (!nameInput.value.trim()) return;
+      username = nameInput.value.trim();
 
-  // DOM elements
-  const videoElem = document.getElementById('remote-video');
-  const streamStatus = document.getElementById('stream-status');
-  const viewerCountElem = document.getElementById('viewer-count');
-  const viewerNamesElem = document.getElementById('viewer-names');
-  const startStreamBtn = document.getElementById('start-stream-btn');
-  const stopStreamBtn = document.getElementById('stop-stream-btn');
-  const endStreamBtn = document.getElementById('end-stream-btn');
-  const exitBtn = document.getElementById('exit-button');
-
-  const chatMessages = document.getElementById('chat-messages');
-  const usernameInput = document.getElementById('username');
-  const messageInput = document.getElementById('message');
-  const sendBtn = document.getElementById('send-btn');
-
-  // Variables
-  let localStream = null;
-  let peerConnection = null;
-  let isStreamer = false;
-  let userId = Math.random().toString(36).slice(2);
-  let currentViewers = {};
-
-  // ICE servers (free STUN)
-  const configuration = {
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-  };
-
-  // --- CHAT SETUP ---
-
-  function updateSendButton() {
-    sendBtn.disabled = !(usernameInput.value.trim() && messageInput.value.trim());
-  }
-  usernameInput.addEventListener('input', updateSendButton);
-  messageInput.addEventListener('input', updateSendButton);
-
-  chatRef.limitToLast(100).on('child_added', snapshot => {
-    const data = snapshot.val();
-    const msgDiv = document.createElement('div');
-    msgDiv.classList.add('message');
-    msgDiv.style.borderBottom = '1px solid #ccc';
-    msgDiv.style.paddingBottom = '6px';
-    msgDiv.style.marginBottom = '8px';
-
-    const nameSpan = document.createElement('span');
-    nameSpan.classList.add('username');
-    nameSpan.textContent = data.username + ': ';
-
-    const textSpan = document.createElement('span');
-    textSpan.classList.add('text');
-    textSpan.textContent = data.text;
-
-    msgDiv.appendChild(nameSpan);
-    msgDiv.appendChild(textSpan);
-    chatMessages.appendChild(msgDiv);
-
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  });
-
-  sendBtn.addEventListener('click', () => {
-    const username = usernameInput.value.trim();
-    const text = messageInput.value.trim();
-    if (!username || !text) return;
-
-    chatRef.push({
-      username,
-      text,
-      timestamp: Date.now()
+      document.getElementById("name-entry").style.display = "none";
+      document.getElementById("chat-container").style.display = "flex";
     });
 
-    messageInput.value = '';
-    sendBtn.disabled = true;
-    messageInput.focus();
-  });
+    document.getElementById("exit-btn").addEventListener("click", () => {
+      window.location.href = "main.html";
+    });
 
-  messageInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !sendBtn.disabled) {
-      sendBtn.click();
-    }
-  });
-
-  // --- VIEWER TRACKING ---
-
-  function addViewer() {
-    if (isStreamer) return;
-    const name = usernameInput.value.trim() || "Anon";
-    viewersRef.child(userId).set({ username: name });
-    viewersRef.child(userId).onDisconnect().remove();
-  }
-
-  usernameInput.addEventListener('input', () => {
-    if (!isStreamer) {
-      addViewer();
-    }
-  });
-
-  viewersRef.on('value', snapshot => {
-    currentViewers = snapshot.val() || {};
-    const viewerNames = Object.values(currentViewers).map(v => v.username);
-    viewerCountElem.textContent = "Viewers: " + viewerNames.length;
-    viewerNamesElem.textContent = viewerNames.length > 0 ? viewerNames.join(', ') : "(no viewers)";
-  });
-
-  // --- STREAMING FUNCTIONS ---
-
-  function closePeerConnection() {
-    if (peerConnection) {
-      peerConnection.close();
-      peerConnection = null;
-    }
-    videoElem.srcObject = null;
-  }
-
-  async function setupViewerPeerConnection() {
-    peerConnection = new RTCPeerConnection(configuration);
-
-    peerConnection.onicecandidate = e => {
-      if (e.candidate) {
-        iceCandidatesRef.push({
-          candidate: e.candidate,
-          sender: userId
+    document.getElementById("message-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const input = document.getElementById("message-input");
+      const text = input.value.trim();
+      if (text !== "") {
+        push(messagesRef, {
+          name: username,
+          text: text,
+          timestamp: new Date().toISOString()
         });
-      }
-    };
-
-    peerConnection.ontrack = e => {
-      videoElem.srcObject = e.streams[0];
-    };
-
-    offerRef.on('value', async snapshot => {
-      const offer = snapshot.val();
-      if (!offer) return;
-
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-
-      await answerRef.set({ ...answer, sender: userId });
-    });
-
-    iceCandidatesRef.on('child_added', snapshot => {
-      const data = snapshot.val();
-      if (data.sender !== userId) {
-        const candidate = new RTCIceCandidate(data.candidate);
-        peerConnection.addIceCandidate(candidate);
-      }
-    });
-  }
-
-  async function setupStreamerPeerConnection() {
-    peerConnection = new RTCPeerConnection(configuration);
-
-    localStream.getTracks().forEach(track => {
-      peerConnection.addTrack(track, localStream);
-    });
-
-    peerConnection.onicecandidate = e => {
-      if (e.candidate) {
-        iceCandidatesRef.push({
-          candidate: e.candidate,
-          sender: userId
-        });
-      }
-    };
-
-    answerRef.on('value', async snapshot => {
-      const answer = snapshot.val();
-      if (!answer) return;
-
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-    });
-
-    iceCandidatesRef.on('child_added', snapshot => {
-      const data = snapshot.val();
-      if (data.sender !== userId) {
-        const candidate = new RTCIceCandidate(data.candidate);
-        peerConnection.addIceCandidate(candidate);
+        input.value = "";
       }
     });
 
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    await offerRef.set({ ...offer, sender: userId });
-  }
+    onChildAdded(messagesRef, function (data) {
+      const msg = data.val();
+      const msgEl = document.createElement("div");
+      msgEl.classList.add("message");
 
-  async function sendSystemMessage(text) {
-    chatRef.push({
-      username: "System",
-      text,
-      timestamp: Date.now()
+      const time = new Date(msg.timestamp);
+      const formatted = `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')} ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
+
+      msgEl.innerHTML = `<strong>${msg.name}</strong>: ${msg.text} <span class="timestamp">${formatted}</span>`;
+      document.getElementById("messages").appendChild(msgEl);
+      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
     });
-  }
-
-  startStreamBtn.onclick = async () => {
-    if (isStreamingRef) {
-      const streamingNow = (await isStreamingRef.get()).val();
-      if (streamingNow) {
-        alert("Someone else is already streaming. Please wait for them to stop.");
-        return;
-      }
-    }
-    try {
-      localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-      isStreamer = true;
-
-      await isStreamingRef.set(true);
-      await streamerIdRef.set(userId);
-
-      streamStatus.textContent = "Streaming now";
-      startStreamBtn.style.display = 'none';
-      stopStreamBtn.style.display = 'inline-block';
-      endStreamBtn.style.display = 'inline-block';
-
-      await setupStreamerPeerConnection();
-
-      // Send system message
-      sendSystemMessage(`${usernameInput.value.trim() || "Someone"} started streaming!`);
-
-      // Remove self from viewers while streaming
-      viewersRef.child(userId).remove();
-    } catch (err) {
-      alert("Error starting screen share: " + err.message);
-    }
-  };
-
-  stopStreamBtn.onclick = async () => {
-    if (!isStreamer) return;
-
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      localStream = null;
-    }
-    isStreamer = false;
-    closePeerConnection();
-
-    await isStreamingRef.set(false);
-    await streamerIdRef.set(null);
-    await offerRef.remove();
-    await answerRef.remove();
-    await iceCandidatesRef.remove();
-
-    streamStatus.textContent = "No active stream";
-    startStreamBtn.style.display = 'inline-block';
-    stopStreamBtn.style.display = 'none';
-    endStreamBtn.style.display = 'none';
-
-    // Send system message
-    sendSystemMessage(`${usernameInput.value.trim() || "Someone"} stopped streaming.`);
-
-    // Add self back as viewer
-    addViewer();
-  };
-
-  endStreamBtn.onclick = async () => {
-    const confirmEnd = confirm("Are you sure you want to end the current stream for everyone?");
-    if (!confirmEnd) return;
-
-    await isStreamingRef.set(false);
-    await streamerIdRef.set(null);
-    await offerRef.remove();
-    await answerRef.remove();
-    await iceCandidatesRef.remove();
-
-    if (isStreamer) {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-      }
-      isStreamer = false;
-      closePeerConnection();
-    }
-    streamStatus.textContent = "No active stream";
-    startStreamBtn.style.display = 'inline-block';
-    stopStreamBtn.style.display = 'none';
-    endStreamBtn.style.display = 'none';
-
-    // Send system message
-    sendSystemMessage(`${usernameInput.value.trim() || "Someone"} stopped streaming.`);
-
-    // Add self back as viewer if not streaming
-    if (!isStreamer) addViewer();
-  };
-
-  isStreamingRef.on('value', async snapshot => {
-    const streaming = snapshot.val();
-
-    if (streaming) {
-      const currentStreamer = (await streamerIdRef.get()).val();
-      if (currentStreamer === userId) {
-        // You are streaming
-        streamStatus.textContent = "Streaming now";
-        startStreamBtn.style.display = 'none';
-        stopStreamBtn.style.display = 'inline-block';
-        endStreamBtn.style.display = 'inline-block';
-
-        // Remove self as viewer when streaming
-        viewersRef.child(userId).remove();
-
-        return;
-      } else {
-        // You are a viewer
-        isStreamer = false;
-        streamStatus.textContent = "Watching stream";
-        startStreamBtn.style.display = 'none';
-        stopStreamBtn.style.display = 'none';
-        endStreamBtn.style.display = 'inline-block';
-
-        await setupViewerPeerConnection();
-
-        // Add self as viewer
-        addViewer();
-      }
-    } else {
-      // No stream
-      streamStatus.textContent = "No active stream";
-      startStreamBtn.style.display = 'inline-block';
-      stopStreamBtn.style.display = 'none';
-      endStreamBtn.style.display = 'none';
-      closePeerConnection();
-
-      // Add self as viewer
-      addViewer();
-    }
-  });
-
-  window.addEventListener('beforeunload', () => {
-    if (!isStreamer) {
-      viewersRef.child(userId).remove();
-    }
-  });
-
-  usernameInput.addEventListener('input', () => {
-    if (!isStreamer) {
-      const name = usernameInput.value.trim() || "Anon";
-      viewersRef.child(userId).set({ username: name });
-    }
-  });
-
-  // Initialize viewers on page load
-  isStreamingRef.once('value').then(snapshot => {
-    if (!snapshot.val()) {
-      addViewer();
-    }
-  });
-
-  exitBtn.onclick = () => {
-    if (!isStreamer) {
-      viewersRef.child(userId).remove();
-    }
-    window.location.href = "main.html";
-  };
-</script>
-
+  </script>
 </body>
 </html>
-

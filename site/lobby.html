@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lobby</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #f2e38f;
+      color: black;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      margin: 0;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin-bottom: 5px;
+    }
+    #status {
+      margin-bottom: 15px;
+      font-weight: bold;
+      min-height: 1.2em;
+      text-align: center;
+      max-width: 400px;
+    }
+    #playersList {
+      width: 400px;
+      border: 3px solid black;
+      background: white;
+      padding: 10px;
+      box-sizing: border-box;
+      max-height: 60vh;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+    .player {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #ccc;
+    }
+    .player:last-child {
+      border-bottom: none;
+    }
+    .color-box {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background-color: yellow;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 16px;
+      user-select: none;
+    }
+    button {
+      padding: 8px 15px;
+      font-family: monospace;
+      font-weight: bold;
+      cursor: pointer;
+      background: black;
+      color: #f2e38f;
+      border: 3px solid black;
+      transition: background 0.3s ease, color 0.3s ease;
+      margin-left: 10px;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background: #f5de5d;
+      color: black;
+    }
+    #nameInput {
+      padding: 8px;
+      font-family: monospace;
+      font-weight: bold;
+      font-size: 1em;
+      border: 3px solid black;
+      width: 200px;
+      box-sizing: border-box;
+    }
+    #colorPicker {
+      width: 34px;
+      height: 34px;
+      border: 3px solid black;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #f5de5d; /* default yellow */
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      padding: 0;
+      margin-left: 10px;
+    }
+    #colorPicker::-webkit-color-swatch-wrapper {
+      padding: 0;
+      border-radius: 8px;
+    }
+    #colorPicker::-webkit-color-swatch {
+      border-radius: 8px;
+    }
+    #joinContainer {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* New styles for word selection */
+    #wordSelectionContainer {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      max-width: 400px;
+      width: 100%;
+    }
+    #wordSelectionContainer input {
+      font-family: monospace;
+      font-weight: bold;
+      font-size: 1em;
+      padding: 8px;
+      margin: 5px 0;
+      border: 3px solid black;
+      width: 100%;
+      box-sizing: border-box;
+      text-transform: lowercase;
+    }
+    #submitWordsBtn {
+      margin-top: 10px;
+      background: black;
+      color: #f2e38f;
+      border: 3px solid black;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 8px 15px;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    #submitWordsBtn:hover {
+      background: #f5de5d;
+      color: black;
+    }
+    #submitWordsBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+  <!-- Firebase Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body>
+  <h1>Lobby</h1>
+
+  <div id="joinContainer">
+    <input type="text" id="nameInput" placeholder="Enter your name" autocomplete="off" />
+    <input type="color" id="colorPicker" title="Choose your color" value="#f5de5d" />
+    <button id="joinBtn">Join Lobby</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="playersList">No players yet.</div>
+  <button id="readyBtn" disabled>Ready</button>
+
+  <!-- Word Selection UI -->
+  <div id="wordSelectionContainer">
+    <div id="wordInstructions" style="margin-bottom: 10px; font-weight: bold; text-align:center;"></div>
+    <div id="wordInputs"></div>
+    <button id="submitWordsBtn" disabled>Submit Words</button>
+  </div>
+
+  <script>
+    // Firebase config - your project details here:
+    const firebaseConfig = {
+      apiKey: "AIzaSyA9eWIxt6b_TMDDSNWoACZntoE072R-Ko8",
+      authDomain: "scrib-3b193.firebaseapp.com",
+      databaseURL: "https://scrib-3b193-default-rtdb.firebaseio.com",
+      projectId: "scrib-3b193",
+      storageBucket: "scrib-3b193.firebasestorage.app",
+      messagingSenderId: "517150259600",
+      appId: "1:517150259600:web:a584898ab7ca4cebfddb15"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Database references
+    const lobbyRef = db.ref('lobby');
+    const playersRef = lobbyRef.child('players');
+    const gameStateRef = lobbyRef.child('gameState');
+
+    // UI Elements
+    const statusDiv = document.getElementById('status');
+    const playersListDiv = document.getElementById('playersList');
+    const readyBtn = document.getElementById('readyBtn');
+    const joinBtn = document.getElementById('joinBtn');
+    const nameInput = document.getElementById('nameInput');
+    const colorPicker = document.getElementById('colorPicker');
+    const joinContainer = document.getElementById('joinContainer');
+
+    // Word selection UI
+    const wordSelectionContainer = document.getElementById('wordSelectionContainer');
+    const wordInstructions = document.getElementById('wordInstructions');
+    const wordInputsDiv = document.getElementById('wordInputs');
+    const submitWordsBtn = document.getElementById('submitWordsBtn');
+
+    let playerId = null;
+    let username = null;
+    let playerColor = null;
+    let isSpectator = false;
+    let wordsNeeded = 0;
+
+    readyBtn.disabled = true;
+
+    // Join lobby function
+    function join() {
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert('Please enter your name');
+        return;
+      }
+      username = name;
+      playerColor = colorPicker.value || "#f5de5d";
+
+      joinContainer.style.display = 'none';
+      joinBtn.disabled = true;
+      nameInput.disabled = true;
+      colorPicker.disabled = true;
+      statusDiv.textContent = 'Connecting to lobby...';
+
+      joinLobby();
+    }
+
+    joinBtn.addEventListener('click', join);
+    nameInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') join();
+    });
+
+    async function joinLobby() {
+      try {
+        const snapshot = await playersRef.once('value');
+        const players = snapshot.val() || {};
+
+        const activePlayersCount = Object.values(players).filter(p => !p.isSpectator).length;
+        isSpectator = activePlayersCount >= 10;
+
+        // Add this player
+        const newPlayerRef = playersRef.push();
+        playerId = newPlayerRef.key;
+
+        await newPlayerRef.set({
+          username,
+          color: playerColor,
+          ready: false,
+          isSpectator,
+          score: 0,
+          words: []
+        });
+
+        statusDiv.textContent = isSpectator
+          ? "You joined as a Spectator (max 10 players allowed)."
+          : `Welcome, ${username}!`;
+
+        readyBtn.disabled = isSpectator;
+
+        listenLobby();
+      } catch (error) {
+        statusDiv.textContent = "Error connecting to lobby. Try reload.";
+        console.error("Join Lobby error:", error);
+      }
+    }
+
+    // Listen for lobby changes (players & gamestate)
+    function listenLobby() {
+      playersRef.on('value', snapshot => {
+        const players = snapshot.val() || {};
+        renderPlayers(players);
+        checkAllReady(players);
+      });
+
+      gameStateRef.on('value', snapshot => {
+        const gameState = snapshot.val();
+        if (gameState === 'wordSelection') {
+          startWordSelectionPhase();
+        } else if (gameState === 'drawing') {
+          statusDiv.textContent = 'Game started! Drawing phase... (not implemented yet)';
+          // Here you will add drawing UI and logic later
+          hideWordSelection();
+          readyBtn.style.display = 'none';
+        } else {
+          statusDiv.textContent = isSpectator
+            ? "You are a spectator."
+            : "Waiting for all players to ready up...";
+          wordSelectionContainer.style.display = 'none';
+          readyBtn.style.display = 'inline-block';
+        }
+      });
+    }
+
+    function renderPlayers(players) {
+      playersListDiv.innerHTML = '';
+      const entries = Object.entries(players);
+      if (entries.length === 0) {
+        playersListDiv.textContent = 'No players in lobby yet.';
+        return;
+      }
+      entries.forEach(([id, player]) => {
+        const div = document.createElement('div');
+        div.className = 'player';
+
+        const colorBox = document.createElement('div');
+        colorBox.className = 'color-box';
+        colorBox.style.backgroundColor = player.color || '#f5de5d';
+        colorBox.textContent = '☺'; // smiley face
+        div.appendChild(colorBox);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = player.username + (player.isSpectator ? ' (Spectator)' : '');
+        div.appendChild(nameSpan);
+
+        const readySpan = document.createElement('span');
+        readySpan.textContent = player.ready ? 'READY' : 'Not Ready';
+        readySpan.style.color = player.ready ? 'green' : 'red';
+        div.appendChild(readySpan);
+
+        playersListDiv.appendChild(div);
+      });
+    }
+
+    // Check if all active players are ready, update gameState if yes
+    function checkAllReady(players) {
+      const activePlayers = Object.values(players).filter(p => !p.isSpectator);
+      if (activePlayers.length === 0) {
+        statusDiv.textContent = "Waiting for players...";
+        return;
+      }
+
+      const allReady = activePlayers.every(p => p.ready);
+
+      if (allReady) {
+        statusDiv.textContent = "All players are ready! Starting word selection...";
+        lobbyRef.update({ gameState: "wordSelection" });
+      } else {
+        statusDiv.textContent = isSpectator
+          ? "You are a spectator."
+          : "Waiting for all players to ready up...";
+      }
+    }
+
+    readyBtn.addEventListener('click', () => {
+      if (!playerId) return;
+
+      playersRef.child(playerId).once('value').then(snapshot => {
+        const currentReady = snapshot.val().ready;
+        playersRef.child(playerId).update({ ready: !currentReady });
+      });
+    });
+
+    // Word selection phase logic
+    function startWordSelectionPhase() {
+      readyBtn.style.display = 'none';
+      wordSelectionContainer.style.display = 'flex';
+      joinContainer.style.display = 'none';
+
+      // Determine number of words needed by rules
+      playersRef.once('value').then(snapshot => {
+        const players = snapshot.val() || {};
+        const activePlayers = Object.values(players).filter(p => !p.isSpectator);
+
+        const count = activePlayers.length;
+        if (count === 2) wordsNeeded = 3;
+        else if (count > 6) wordsNeeded = 1;
+        else wordsNeeded = 2;
+
+        if (isSpectator) {
+          wordSelectionContainer.style.display = 'none'; // spectators don't select words
+          statusDiv.textContent = "You are a spectator, waiting for the game...";
+          return;
+        }
+
+        statusDiv.textContent = `Please enter your ${wordsNeeded} word${wordsNeeded > 1 ? 's' : ''} to draw.`;
+
+        renderWordInputs(wordsNeeded);
+      });
+    }
+
+    function renderWordInputs(count) {
+      wordInputsDiv.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = `Word ${i + 1}`;
+        input.maxLength = 15;
+        input.autocomplete = 'off';
+        input.addEventListener('input', checkWordsFilled);
+        wordInputsDiv.appendChild(input);
+      }
+      checkWordsFilled();
+    }
+
+    function checkWordsFilled() {
+      const inputs = wordInputsDiv.querySelectorAll('input');
+      let allFilled = true;
+      inputs.forEach(input => {
+        if (input.value.trim() === '') allFilled = false;
+      });
+      submitWordsBtn.disabled = !allFilled;
+    }
+
+    submitWordsBtn.addEventListener('click', () => {
+      const inputs = wordInputsDiv.querySelectorAll('input');
+      const words = [];
+      inputs.forEach(input => {
+        words.push(input.value.trim().toLowerCase());
+      });
+
+      // Save words to Firebase
+      playersRef.child(playerId).update({
+        words,
+        ready: false // reset ready for next phase or just keep as is
+      });
+
+      wordSelectionContainer.style.display = 'none';
+      statusDiv.textContent = 'Words submitted! Waiting for others...';
+
+      checkAllPlayersSubmittedWords();
+    });
+
+    function checkAllPlayersSubmittedWords() {
+      playersRef.once('value').then(snapshot => {
+        const players = snapshot.val() || {};
+        const activePlayers = Object.values(players).filter(p => !p.isSpectator);
+
+        // Check if all active players have words with expected length
+        const allSubmitted = activePlayers.every(p => Array.isArray(p.words) && p.words.length === wordsNeeded);
+
+        if (allSubmitted) {
+          // Advance to drawing phase
+          lobbyRef.update({ gameState: 'drawing' });
+        } else {
+          // Wait and check again in a few seconds
+          setTimeout(checkAllPlayersSubmittedWords, 3000);
+        }
+      });
+    }
+
+    // Remove player on leave
+    window.addEventListener('beforeunload', () => {
+      if (playerId) {
+        playersRef.child(playerId).remove();
+      }
+    });
+
+  </script>
+</body>
+</html>
